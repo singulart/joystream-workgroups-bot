@@ -1,0 +1,8 @@
+{
+  "properties": [
+    {
+      "name": "joystream.rpc.url",
+      "type": "java.lang.String",
+      "description": "URL of the Joystream RPC endpoint."
+  }
+] }
