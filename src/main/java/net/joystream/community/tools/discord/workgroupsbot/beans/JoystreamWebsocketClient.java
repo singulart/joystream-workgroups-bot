@@ -5,11 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.PathNotFoundException;
 import java.net.URI;
-import java.util.HashMap;
+import net.joystream.community.tools.discord.workgroupsbot.events.NewBlockEvent;
+import net.joystream.community.tools.discord.workgroupsbot.rpcpayloads.SubscribeNewHeads;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.springframework.context.ApplicationEventPublisher;
 
 public class JoystreamWebsocketClient extends WebSocketClient {
 
@@ -17,23 +19,21 @@ public class JoystreamWebsocketClient extends WebSocketClient {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public JoystreamWebsocketClient(URI serverUri) {
+    private final ApplicationEventPublisher eventPublisher;
+
+    public JoystreamWebsocketClient(ApplicationEventPublisher eventPublisher, URI serverUri) {
         super(serverUri);
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
     public void onOpen(ServerHandshake serverHandshake) {
 
         logger.info("Connected to {}", this.getURI());
-        var subscribeNewHeadCommand = new HashMap<String, Object>();
-        subscribeNewHeadCommand.put("id", 1);
-        subscribeNewHeadCommand.put("jsonrpc", "2.0");
-        subscribeNewHeadCommand.put("method", "chain_subscribeNewHeads");
-        subscribeNewHeadCommand.put("params", new String[0]);
-
         try {
-            logger.info("Subscribing to new blocks...");
-            this.send(mapper.writeValueAsString(subscribeNewHeadCommand));
+            String payload = mapper.writeValueAsString(new SubscribeNewHeads());
+            logger.info("Subscribing to new blocks... {}", payload);
+            send(payload);
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
@@ -43,8 +43,10 @@ public class JoystreamWebsocketClient extends WebSocketClient {
     public void onMessage(String payload) {
         var blockNumberHex = "";
         try {
-             blockNumberHex = JsonPath.read(payload, "$.params.result.number");
-            logger.info("Block #{}", Long.parseLong(blockNumberHex.substring(2), 16));
+            blockNumberHex = JsonPath.read(payload, "$.params.result.number");
+            long blockNumber = Long.parseLong(blockNumberHex.substring(2), 16);
+            logger.info("Block #{}", blockNumber);
+            this.eventPublisher.publishEvent(new NewBlockEvent(this, blockNumber));
         } catch (PathNotFoundException e) {
             logger.info("Not a new block payload: {}", payload);
         } catch (NumberFormatException e) {
