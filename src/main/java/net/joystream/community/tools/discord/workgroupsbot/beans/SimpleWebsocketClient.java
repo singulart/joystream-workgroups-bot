@@ -2,6 +2,7 @@ package net.joystream.community.tools.discord.workgroupsbot.beans;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.JsonPath;
 import java.net.URI;
 import java.util.HashMap;
 import org.apache.logging.log4j.LogManager;
@@ -10,10 +11,10 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
 public class SimpleWebsocketClient extends WebSocketClient {
-    
-    private Logger logger = LogManager.getLogger(SimpleWebsocketClient.class);
 
-    private ObjectMapper mapper = new ObjectMapper();
+    private final Logger logger = LogManager.getLogger(SimpleWebsocketClient.class);
+
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public SimpleWebsocketClient(URI serverUri) {
         super(serverUri);
@@ -38,8 +39,9 @@ public class SimpleWebsocketClient extends WebSocketClient {
     }
 
     @Override
-    public void onMessage(String s) {
-        logger.info("onMessage {}", s);
+    public void onMessage(String payload) {
+        String blockNumberHex = JsonPath.read(payload, "$.params.result.number");
+        logger.info("Block #{}", Long.parseLong(blockNumberHex.substring(2), 16));
     }
 
     @Override
