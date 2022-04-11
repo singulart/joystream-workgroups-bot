@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.joystream.community.tools.discord.workgroupsbot.events.NewBlockEvent;
 import net.joystream.community.tools.discord.workgroupsbot.rpcpayloads.GetBlockEvents;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -22,8 +24,13 @@ public class BlockLogProcessor {
 
     @EventListener
     public void handleNewBlockEvent(NewBlockEvent newBlockEvent) throws JsonProcessingException {
-        webClient.post()
-            .bodyValue(mapper.writeValueAsString(new GetBlockEvents(newBlockEvent.getBlock())))
-            .retrieve();
+        String payload = mapper.writeValueAsString(new GetBlockEvents(newBlockEvent.getBlock()));
+        logger.info(payload);
+        var body = webClient.post()
+            .bodyValue(payload)
+            .retrieve().bodyToMono(String.class).block();
+        logger.info(body);
     }
+
+    private final Logger logger = LogManager.getLogger(BlockLogProcessor.class);
 }
